@@ -2,13 +2,9 @@ const express = require('express');
 const { Client } = require('pg');
 const router = express.Router();
 
-// PostgreSQL client configuration
+// PostgreSQL client configuration using environment variables
 const client = new Client({
-  host: 'YOUR_NEW_DATABASE_HOST',
-  port: YOUR_NEW_DATABASE_PORT,
-  user: 'YOUR_NEW_DATABASE_USER',
-  password: 'YOUR_NEW_DATABASE_PASSWORD',
-  database: 'YOUR_NEW_DATABASE_NAME',
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
@@ -50,7 +46,7 @@ router.post('/', async (req, res) => {
 
     await client.query(
       'INSERT INTO food_orders(food_type, quantity, beverage, beverage_quantity, order_date) VALUES($1, $2::numeric, $3, $4::numeric, $5)',
-      [foodType, quantityInKg, beverage, beverageQuantityInLitres, orderDate || null] // Use the provided date or null if not provided
+      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, orderDate || null] // Use provided values or null if not provided
     );
 
     res.status(201).json({ message: 'Food order added successfully!' });

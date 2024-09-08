@@ -2,13 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { Client } = require('pg');
 
-// PostgreSQL client configuration
+// PostgreSQL client configuration using DATABASE_URL from environment variables
 const client = new Client({
-  host: 'YOUR_NEW_DATABASE_HOST',
-  port: YOUR_NEW_DATABASE_PORT,
-  user: 'YOUR_NEW_DATABASE_USER',
-  password: 'YOUR_NEW_DATABASE_PASSWORD',
-  database: 'YOUR_NEW_DATABASE_NAME',
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }

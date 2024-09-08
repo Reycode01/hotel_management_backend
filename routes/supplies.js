@@ -2,12 +2,9 @@ const express = require('express');
 const { Client } = require('pg');
 const router = express.Router();
 
+// PostgreSQL client configuration using DATABASE_URL from environment variables
 const client = new Client({
-  host: 'YOUR_NEW_DATABASE_HOST',
-  port: YOUR_NEW_DATABASE_PORT,
-  user: 'YOUR_NEW_DATABASE_USER',
-  password: 'YOUR_NEW_DATABASE_PASSWORD',
-  database: 'YOUR_NEW_DATABASE_NAME',
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
@@ -27,7 +24,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ message: 'Supply successfully added.' });
   } catch (error) {
-    console.error('Error adding supply:', error);
+    console.error('Error adding supply:', error.message || error);
     res.status(500).json({ error: 'An error occurred while adding the supply.' });
   }
 });
