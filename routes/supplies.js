@@ -12,6 +12,7 @@ const client = new Client({
 
 client.connect();
 
+// POST request to add a new supply
 router.post('/', async (req, res) => {
   const { supplyName, amount, quantity, unit, supplyDate } = req.body;
 
@@ -29,4 +30,27 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET request to fetch supplies by date or all supplies
+router.get('/', async (req, res) => {
+  const { supplyDate } = req.query;
+
+  try {
+    let query = 'SELECT * FROM supplies';
+    let params = [];
+
+    if (supplyDate) {
+      query += ' WHERE supply_date = $1';
+      params = [supplyDate];
+    }
+
+    const result = await client.query(query, params);
+
+    res.json({ supplies: result.rows });
+  } catch (error) {
+    console.error('Error fetching supplies:', error.message || error);
+    res.status(500).json({ error: 'An error occurred while fetching supplies.' });
+  }
+});
+
 module.exports = router;
+
