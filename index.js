@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const { Client } = require('pg');
 
 // Import route modules
 const salariesRouter = require('./routes/salaries');
@@ -9,6 +10,18 @@ const foodOrdersRouter = require('./routes/foodOrders');
 const roomBookingsRouter = require('./routes/roomBookings');
 
 const app = express();
+
+// PostgreSQL client setup
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+client.connect()
+  .then(() => console.log('Connected to PostgreSQL'))
+  .catch(err => console.error('Failed to connect to PostgreSQL', err));
 
 // Enable CORS for all routes with specific origin in production
 const corsOptions = {
