@@ -16,6 +16,7 @@ client.connect();
 const validFoodTypes = ['Meat', 'Vegetables', 'Cereals'];
 const validBeverages = ['Water', 'Soda', 'Juice'];
 
+// POST route to create a new food order
 router.post('/', async (req, res) => {
   const { foodType, quantity, beverage, beverageQuantity, orderDate } = req.body;
 
@@ -57,6 +58,27 @@ router.post('/', async (req, res) => {
     } else {
       res.status(500).json({ error: 'An internal server error occurred.' });
     }
+  }
+});
+
+// GET route to retrieve food orders
+router.get('/', async (req, res) => {
+  const { orderDate } = req.query;
+
+  try {
+    const query = orderDate
+      ? 'SELECT * FROM food_orders WHERE order_date = $1'
+      : 'SELECT * FROM food_orders';
+    const result = await client.query(query, orderDate ? [orderDate] : []);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'No food orders found.' });
+    }
+
+    res.status(200).json({ foodOrders: result.rows });
+  } catch (error) {
+    console.error('Error fetching food orders:', error.message);
+    res.status(500).json({ error: 'An error occurred while fetching food orders.' });
   }
 });
 
