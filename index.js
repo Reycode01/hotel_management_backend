@@ -25,7 +25,7 @@ client.connect()
 
 // Enable CORS for all routes with specific origin in production
 const corsOptions = {
-  origin: 'https://YOUR_PRODUCTION_FRONTEND_URL',
+  origin: 'https://hotelfinancerecords.netlify.app', // Updated URL
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
@@ -62,3 +62,4 @@ const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
+
