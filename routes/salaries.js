@@ -49,4 +49,26 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Route to delete a salary record by id
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Salary id is required.' });
+  }
+
+  try {
+    const result = await client.query('DELETE FROM salaries WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Salary record not found.' });
+    }
+
+    res.json({ message: 'Salary record deleted successfully!' });
+  } catch (error) {
+    console.error('Error deleting salary record:', error.message || error);
+    res.status(500).json({ error: 'An error occurred while deleting the salary record. Please try again later.' });
+  }
+});
+
 module.exports = router;
