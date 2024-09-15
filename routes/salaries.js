@@ -16,11 +16,25 @@ client.connect();
 router.post('/', async (req, res) => {
   const { employeeName, hoursWorked, totalPay, totalDamages, finalTotalPay, date } = req.body;
 
+  // Validate input fields
   if (!employeeName || isNaN(hoursWorked) || isNaN(totalPay) || isNaN(totalDamages) || isNaN(finalTotalPay) || !date) {
     return res.status(400).json({ error: 'All fields are required and must be valid numbers.' });
   }
 
   try {
+    // Check if a salary record for the same employee exists within the last 24 hours
+    const existingSalaryQuery = `
+      SELECT * FROM salaries 
+      WHERE employee_name = $1 
+      AND date > (NOW() - INTERVAL '24 HOURS')
+    `;
+    const existingSalary = await client.query(existingSalaryQuery, [employeeName]);
+
+    if (existingSalary.rowCount > 0) {
+      return res.status(400).json({ error: 'Salary for this employee has already been paid within the last 24 hours.' });
+    }
+
+    // Insert the new salary record
     await client.query(
       'INSERT INTO salaries(employee_name, hours_worked, total_pay, total_damages, final_total_pay, date) VALUES($1, $2, $3, $4, $5, $6)',
       [employeeName, hoursWorked, totalPay, totalDamages, finalTotalPay, date]
@@ -72,3 +86,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
