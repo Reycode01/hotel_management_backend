@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
     const existingSalary = await client.query(existingSalaryQuery, [employeeName]);
 
     if (existingSalary.rowCount > 0) {
-      return res.status(400).json({ error: 'Salary for this employee has already been paid within the last 24 hours.' });
+      return res.status(400).json({ error: 'Daily salary already paid for the mentioned employee.' });
     }
 
     // Insert the new salary record
