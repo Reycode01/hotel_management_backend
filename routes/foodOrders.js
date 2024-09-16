@@ -81,5 +81,23 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while fetching food orders.' });
   }
 });
+// DELETE route to delete a food order by id
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await client.query('DELETE FROM food_orders WHERE id = $1', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Food order not found.' });
+    }
+
+    res.status(200).json({ message: 'Food order deleted successfully!' });
+  } catch (error) {
+    console.error('Error deleting food order:', error.message);
+    res.status(500).json({ error: 'An error occurred while deleting the food order.' });
+  }
+});
+
 
 module.exports = router;
