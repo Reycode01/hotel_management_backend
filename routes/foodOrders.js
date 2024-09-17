@@ -18,6 +18,7 @@ const validBeverages = ['Water', 'Soda', 'Juice'];
 router.post('/', async (req, res) => {
   const { foodType, quantity, beverage, beverageQuantity, orderDate } = req.body;
 
+  // Validate food type and beverage
   if (!validFoodTypes.includes(foodType)) {
     return res.status(400).json({ error: 'Invalid food type' });
   }
@@ -28,11 +29,11 @@ router.post('/', async (req, res) => {
   const quantityInKg = parseFloat(quantity);
   const beverageQuantityInLitres = parseFloat(beverageQuantity);
 
-  if (isNaN(quantityInKg)) {
+  // Validate quantity and beverage quantity
+  if (isNaN(quantityInKg) || quantityInKg <= 0) {
     return res.status(400).json({ error: 'Invalid quantity provided' });
   }
-
-  if (beverage && isNaN(beverageQuantityInLitres)) {
+  if (beverage && (isNaN(beverageQuantityInLitres) || beverageQuantityInLitres < 0)) {
     return res.status(400).json({ error: 'Invalid beverage quantity provided' });
   }
 
@@ -41,15 +42,10 @@ router.post('/', async (req, res) => {
       'INSERT INTO food_orders(food_type, quantity, beverage, beverage_quantity, order_date) VALUES($1, $2::numeric, $3, $4::numeric, $5)',
       [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, orderDate || null]
     );
-
     res.status(201).json({ message: 'Food order added successfully!' });
   } catch (error) {
     console.error('Error adding food order:', error.message);
-    if (error.message.includes('violates')) {
-      res.status(400).json({ error: 'Database constraint violation.' });
-    } else {
-      res.status(500).json({ error: 'An internal server error occurred.' });
-    }
+    res.status(500).json({ error: 'An internal server error occurred.' });
   }
 });
 
