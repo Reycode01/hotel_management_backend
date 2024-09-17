@@ -1,16 +1,14 @@
 const express = require('express');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const router = express.Router();
 
-// PostgreSQL client configuration using environment variables
-const client = new Client({
+// PostgreSQL connection pool configuration using environment variables
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 });
-
-client.connect();
 
 // Valid food types and beverages
 const validFoodTypes = ['Meat', 'Vegetables', 'Cereals'];
@@ -20,7 +18,6 @@ const validBeverages = ['Water', 'Soda', 'Juice'];
 router.post('/', async (req, res) => {
   const { foodType, quantity, beverage, beverageQuantity, orderDate } = req.body;
 
-  // Validate food type and beverage
   if (!validFoodTypes.includes(foodType)) {
     return res.status(400).json({ error: 'Invalid food type' });
   }
@@ -28,26 +25,21 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid beverage' });
   }
 
-  // Validate and adjust units
-  let quantityInKg = parseFloat(quantity);
-  let beverageQuantityInLitres = parseFloat(beverageQuantity);
+  const quantityInKg = parseFloat(quantity);
+  const beverageQuantityInLitres = parseFloat(beverageQuantity);
 
   if (isNaN(quantityInKg)) {
-    console.error('Invalid quantity provided:', quantity);
     return res.status(400).json({ error: 'Invalid quantity provided' });
   }
 
   if (beverage && isNaN(beverageQuantityInLitres)) {
-    console.error('Invalid beverage quantity provided:', beverageQuantity);
     return res.status(400).json({ error: 'Invalid beverage quantity provided' });
   }
 
   try {
-    console.log('Attempting to insert:', foodType, quantityInKg, beverage, beverageQuantityInLitres, orderDate);
-
-    await client.query(
+    await pool.query(
       'INSERT INTO food_orders(food_type, quantity, beverage, beverage_quantity, order_date) VALUES($1, $2::numeric, $3, $4::numeric, $5)',
-      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, orderDate || null] // Use provided values or null if not provided
+      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, orderDate || null]
     );
 
     res.status(201).json({ message: 'Food order added successfully!' });
@@ -69,7 +61,7 @@ router.get('/', async (req, res) => {
     const query = orderDate
       ? 'SELECT * FROM food_orders WHERE order_date = $1'
       : 'SELECT * FROM food_orders';
-    const result = await client.query(query, orderDate ? [orderDate] : []);
+    const result = await pool.query(query, orderDate ? [orderDate] : []);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'No food orders found.' });
@@ -81,12 +73,13 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while fetching food orders.' });
   }
 });
+
 // DELETE route to delete a food order by id
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const result = await client.query('DELETE FROM food_orders WHERE id = $1', [id]);
+    const result = await pool.query('DELETE FROM food_orders WHERE id = $1', [id]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Food order not found.' });
@@ -98,6 +91,5 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while deleting the food order.' });
   }
 });
-
 
 module.exports = router;
