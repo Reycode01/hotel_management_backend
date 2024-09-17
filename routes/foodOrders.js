@@ -1,19 +1,3 @@
-const express = require('express');
-const { Pool } = require('pg');
-const router = express.Router();
-
-// PostgreSQL connection pool configuration using environment variables
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
-
-// Valid food types and beverages
-const validFoodTypes = ['Meat', 'Vegetables', 'Cereals'];
-const validBeverages = ['Water', 'Soda', 'Juice'];
-
 // POST route to create a new food order
 router.post('/', async (req, res) => {
   const { foodType, quantity, beverage, beverageQuantity, orderDate } = req.body;
@@ -88,4 +72,3 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
