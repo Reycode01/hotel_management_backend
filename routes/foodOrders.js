@@ -1,3 +1,19 @@
+const express = require('express');
+const { Pool } = require('pg');
+const router = express.Router();
+
+// PostgreSQL connection pool configuration using environment variables
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Valid food types and beverages
+const validFoodTypes = ['Meat', 'Vegetables', 'Cereals'];
+const validBeverages = ['Water', 'Soda', 'Juice'];
+
 // POST route to create a new food order
 router.post('/', async (req, res) => {
   const { foodType, quantity, beverage, beverageQuantity, orderDate } = req.body;
@@ -10,10 +26,10 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid beverage' });
   }
 
+  // Parse and validate quantities
   const quantityInKg = parseFloat(quantity);
   const beverageQuantityInLitres = parseFloat(beverageQuantity);
 
-  // Validate quantity and beverage quantity
   if (isNaN(quantityInKg) || quantityInKg <= 0) {
     return res.status(400).json({ error: 'Invalid quantity provided' });
   }
@@ -21,10 +37,13 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid beverage quantity provided' });
   }
 
+  // Handle date formatting (strip time component if needed)
+  const formattedOrderDate = orderDate ? orderDate.split('T')[0] : null;
+
   try {
     await pool.query(
       'INSERT INTO food_orders(food_type, quantity, beverage, beverage_quantity, order_date) VALUES($1, $2::numeric, $3, $4::numeric, $5)',
-      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, orderDate || null]
+      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, formattedOrderDate]
     );
     res.status(201).json({ message: 'Food order added successfully!' });
   } catch (error) {
@@ -41,8 +60,8 @@ router.get('/', async (req, res) => {
     const query = orderDate
       ? 'SELECT * FROM food_orders WHERE order_date = $1'
       : 'SELECT * FROM food_orders';
-    const result = await pool.query(query, orderDate ? [orderDate] : []);
-    
+    const result = await pool.query(query, orderDate ? [orderDate.split('T')[0]] : []);
+
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'No food orders found.' });
     }
@@ -71,4 +90,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while deleting the food order.' });
   }
 });
+
+module.exports = router;
 
