@@ -18,7 +18,6 @@ const validBeverages = ['Water', 'Soda', 'Juice'];
 router.post('/', async (req, res) => {
   const { foodType, quantity, beverage, beverageQuantity, orderDate } = req.body;
 
-  // Validate food type and beverage
   if (!validFoodTypes.includes(foodType)) {
     return res.status(400).json({ error: 'Invalid food type' });
   }
@@ -26,29 +25,31 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Invalid beverage' });
   }
 
-  // Parse and validate quantities
   const quantityInKg = parseFloat(quantity);
   const beverageQuantityInLitres = parseFloat(beverageQuantity);
 
-  if (isNaN(quantityInKg) || quantityInKg <= 0) {
+  if (isNaN(quantityInKg)) {
     return res.status(400).json({ error: 'Invalid quantity provided' });
   }
-  if (beverage && (isNaN(beverageQuantityInLitres) || beverageQuantityInLitres < 0)) {
+
+  if (beverage && isNaN(beverageQuantityInLitres)) {
     return res.status(400).json({ error: 'Invalid beverage quantity provided' });
   }
-
-  // Handle date formatting (strip time component if needed)
-  const formattedOrderDate = orderDate ? orderDate.split('T')[0] : null;
 
   try {
     await pool.query(
       'INSERT INTO food_orders(food_type, quantity, beverage, beverage_quantity, order_date) VALUES($1, $2::numeric, $3, $4::numeric, $5)',
-      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, formattedOrderDate]
+      [foodType, quantityInKg, beverage || null, beverageQuantityInLitres || null, orderDate || null]
     );
+
     res.status(201).json({ message: 'Food order added successfully!' });
   } catch (error) {
     console.error('Error adding food order:', error.message);
-    res.status(500).json({ error: 'An internal server error occurred.' });
+    if (error.message.includes('violates')) {
+      res.status(400).json({ error: 'Database constraint violation.' });
+    } else {
+      res.status(500).json({ error: 'An internal server error occurred.' });
+    }
   }
 });
 
@@ -60,8 +61,8 @@ router.get('/', async (req, res) => {
     const query = orderDate
       ? 'SELECT * FROM food_orders WHERE order_date = $1'
       : 'SELECT * FROM food_orders';
-    const result = await pool.query(query, orderDate ? [orderDate.split('T')[0]] : []);
-
+    const result = await pool.query(query, orderDate ? [orderDate] : []);
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'No food orders found.' });
     }
@@ -92,4 +93,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
