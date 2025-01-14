@@ -13,7 +13,7 @@ const app = express();
 
 // PostgreSQL client setup
 const client = new Client({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DB_URL,
   ssl: {
     rejectUnauthorized: false
   }
