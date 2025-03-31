@@ -1,19 +1,18 @@
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 const router = express.Router();
-const { Client } = require('pg');
 
-// PostgreSQL client configuration using DATABASE_URL from environment variables
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
+// Connect to SQLite database
+const db = new sqlite3.Database(process.env.DB_PATH, (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite:', err.message);
+  } else {
+    console.log('Connected to SQLite database for salaries.');
   }
 });
 
-client.connect();
-
 // Route to create a new salary record
-router.post('/', async (req, res) => {
+router.post('/', (req, res) => {
   const { employeeName, hoursWorked, totalPay, totalDamages, finalTotalPay, date } = req.body;
 
   // Validate input fields
@@ -21,69 +20,82 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'All fields are required and must be valid numbers.' });
   }
 
-  try {
-    // Check if a salary record for the same employee exists within the last 24 hours
-    const existingSalaryQuery = `
-      SELECT * FROM salaries 
-      WHERE employee_name = $1 
-      AND date > (NOW() - INTERVAL '24 HOURS')
-    `;
-    const existingSalary = await client.query(existingSalaryQuery, [employeeName]);
+  // Check if a salary record for the same employee exists within the last 24 hours
+  const checkQuery = `
+    SELECT * FROM salaries 
+    WHERE employee_name = ? 
+    AND date >= datetime('now', '-1 day')
+  `;
+  
+  db.get(checkQuery, [employeeName], (err, existingSalary) => {
+    if (err) {
+      console.error('Error checking existing salary record:', err.message);
+      return res.status(500).json({ error: 'Database error while checking salary record.' });
+    }
 
-    if (existingSalary.rowCount > 0) {
+    if (existingSalary) {
       return res.status(400).json({ error: 'Daily salary already paid for the mentioned employee.' });
     }
 
     // Insert the new salary record
-    await client.query(
-      'INSERT INTO salaries(employee_name, hours_worked, total_pay, total_damages, final_total_pay, date) VALUES($1, $2, $3, $4, $5, $6)',
-      [employeeName, hoursWorked, totalPay, totalDamages, finalTotalPay, date]
-    );
-
-    res.status(201).json({ message: 'Salary record was created successfully!' });
-  } catch (error) {
-    console.error('Error creating salary record:', error.message || error);
-    res.status(500).json({ error: 'An error occurred while creating the salary record. Please try again later.' });
-  }
+    const insertQuery = `
+      INSERT INTO salaries (employee_name, hours_worked, total_pay, total_damages, final_total_pay, date) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.run(insertQuery, [employeeName, hoursWorked, totalPay, totalDamages, finalTotalPay, date], function (err) {
+      if (err) {
+        console.error('Error creating salary record:', err.message);
+        return res.status(500).json({ error: 'An error occurred while creating the salary record. Please try again later.' });
+      }
+      res.status(201).json({ message: 'Salary record was created successfully!', id: this.lastID });
+    });
+  });
 });
 
 // Route to get salary records for a specific date
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   const { date } = req.query;
 
-  try {
-    const query = date
-      ? 'SELECT * FROM salaries WHERE date::date = $1'
-      : 'SELECT * FROM salaries';
-    const result = await client.query(query, date ? [date] : []);
-    res.json({ salaries: result.rows });
-  } catch (error) {
-    console.error('Error fetching salaries:', error.message || error);
-    res.status(500).json({ error: 'Unable to fetch salaries. Please try again later.' });
-  }
+  const sql = date
+    ? 'SELECT * FROM salaries WHERE date = ?'
+    : 'SELECT * FROM salaries';
+  const params = date ? [date] : [];
+
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching salaries:', err.message);
+      return res.status(500).json({ error: 'Unable to fetch salaries. Please try again later.' });
+    }
+
+    res.json({ salaries: rows });
+  });
 });
 
 // Route to delete a salary record by id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', (req, res) => {
   const { id } = req.params;
 
   if (!id) {
     return res.status(400).json({ error: 'Salary id is required.' });
   }
 
-  try {
-    const result = await client.query('DELETE FROM salaries WHERE id = $1 RETURNING *', [id]);
+  const deleteQuery = 'DELETE FROM salaries WHERE id = ?';
 
-    if (result.rowCount === 0) {
+  db.run(deleteQuery, [id], function (err) {
+    if (err) {
+      console.error('Error deleting salary record:', err.message);
+      return res.status(500).json({ error: 'An error occurred while deleting the salary record. Please try again later.' });
+    }
+
+    if (this.changes === 0) {
       return res.status(404).json({ error: 'Salary record not found.' });
     }
 
     res.json({ message: 'Salary record deleted successfully!' });
-  } catch (error) {
-    console.error('Error deleting salary record:', error.message || error);
-    res.status(500).json({ error: 'An error occurred while deleting the salary record. Please try again later.' });
-  }
+  });
 });
 
 module.exports = router;
+
 

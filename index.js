@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { Client } = require('pg');
+const sqlite3 = require('sqlite3').verbose(); // Import sqlite3
 
 // Import route modules
 const salariesRouter = require('./routes/salaries');
@@ -11,17 +11,14 @@ const roomBookingsRouter = require('./routes/roomBookings');
 
 const app = express();
 
-// PostgreSQL client setup
-const client = new Client({
-  connectionString: process.env.DB_URL,
-  ssl: {
-    rejectUnauthorized: false
+// SQLite database setup
+const db = new sqlite3.Database(process.env.DB_PATH, (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite', err.message);
+  } else {
+    console.log('Connected to SQLite database');
   }
 });
-
-client.connect()
-  .then(() => console.log('Connected to PostgreSQL'))
-  .catch(err => console.error('Failed to connect to PostgreSQL', err));
 
 // Enable CORS for all routes with specific origin in production
 const corsOptions = {
@@ -62,4 +59,3 @@ const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
-

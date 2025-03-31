@@ -1,61 +1,66 @@
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 const router = express.Router();
-const { Client } = require('pg');
 
-// PostgreSQL client configuration using DATABASE_URL from environment variables
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
+// Connect to SQLite database
+const db = new sqlite3.Database(process.env.DB_PATH, (err) => {
+  if (err) {
+    console.error('Failed to connect to SQLite:', err.message);
+  } else {
+    console.log('Connected to SQLite database for room bookings.');
   }
 });
 
-client.connect();
-
 // Route to create a new booking
-router.post('/', async (req, res) => {
+router.post('/', (req, res) => {
   const { roomName, customerName, amount, bookingDate } = req.body;
 
   if (!roomName || !customerName || isNaN(amount) || !bookingDate) {
     return res.status(400).json({ error: 'All fields are required and amount must be a number.' });
   }
 
-  try {
-    const existingBooking = await client.query(
-      'SELECT * FROM room_bookings WHERE room_name = $1 AND booking_date = $2',
-      [roomName, bookingDate]
-    );
+  // Check if the room is already booked for the given date
+  const checkQuery = `SELECT * FROM room_bookings WHERE room_name = ? AND booking_date = ?`;
+  db.get(checkQuery, [roomName, bookingDate], (err, existingBooking) => {
+    if (err) {
+      console.error('Error checking existing booking:', err.message);
+      return res.status(500).json({ error: 'Database error while checking booking.' });
+    }
 
-    if (existingBooking.rows.length > 0) {
+    if (existingBooking) {
       return res.status(400).json({ error: `Room ${roomName} is already booked for ${bookingDate}. Please choose a different room or date.` });
     }
 
-    await client.query(
-      'INSERT INTO room_bookings(room_name, customer_name, amount, booking_date) VALUES($1, $2, $3, $4)',
-      [roomName, customerName, amount, bookingDate]
-    );
-
-    res.status(201).json({ message: 'Room was booked successfully!' });
-  } catch (error) {
-    console.error('Error booking room:', error.message || error);
-    res.status(500).json({ error: 'An error occurred while booking the room. Please try again later.' });
-  }
+    // Insert the new booking if no conflict
+    const insertQuery = `INSERT INTO room_bookings (room_name, customer_name, amount, booking_date) VALUES (?, ?, ?, ?)`;
+    db.run(insertQuery, [roomName, customerName, amount, bookingDate], function (err) {
+      if (err) {
+        console.error('Error booking room:', err.message);
+        return res.status(500).json({ error: 'An error occurred while booking the room. Please try again later.' });
+      }
+      res.status(201).json({ message: 'Room was booked successfully!', id: this.lastID });
+    });
+  });
 });
 
 // Route to get bookings for a specific date
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   const { bookingDate } = req.query;
 
-  try {
-    const query = bookingDate
-      ? 'SELECT * FROM room_bookings WHERE booking_date = $1'
-      : 'SELECT * FROM room_bookings';
-    const result = await client.query(query, bookingDate ? [bookingDate] : []);
-    res.json({ bookings: result.rows });
-  } catch (error) {
-    console.error('Error fetching bookings:', error.message || error);
-    res.status(500).json({ error: 'Unable to fetch bookings. Please try again later.' });
-  }
+  const sql = bookingDate
+    ? 'SELECT * FROM room_bookings WHERE booking_date = ?'
+    : 'SELECT * FROM room_bookings';
+  const params = bookingDate ? [bookingDate] : [];
+
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching bookings:', err.message);
+      return res.status(500).json({ error: 'Unable to fetch bookings. Please try again later.' });
+    }
+
+    res.json({ bookings: rows });
+  });
 });
 
 module.exports = router;
+
