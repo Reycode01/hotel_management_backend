@@ -5,6 +5,7 @@ const router = express.Router();
 // Connect to PostgreSQL database
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL, // Make sure to set the DATABASE_URL in your .env file
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,  // Enable SSL if DATABASE_SSL is true
 });
 
 // POST request to add a new supply

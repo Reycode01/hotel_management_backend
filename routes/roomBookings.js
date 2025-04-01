@@ -4,11 +4,8 @@ const router = express.Router();
 
 // Set up PostgreSQL connection pool
 const pool = new Pool({
-  user: 'your_user', // Replace with your PostgreSQL username
-  host: 'localhost',
-  database: 'your_database', // Replace with your database name
-  password: 'your_password', // Replace with your PostgreSQL password
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,  // Use the DATABASE_URL environment variable
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,  // Enable SSL if DATABASE_SSL is true
 });
 
 // Route to create a new booking

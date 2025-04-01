@@ -4,11 +4,8 @@ const router = express.Router();
 
 // Set up the PostgreSQL client
 const pool = new Pool({
-  user: 'your_username',
-  host: 'localhost',
-  database: 'your_database_name',
-  password: 'your_password',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,  // Use the DATABASE_URL environment variable
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,  // Enable SSL if DATABASE_SSL is true
 });
 
 // Route to create a new salary record
