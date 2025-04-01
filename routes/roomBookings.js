@@ -2,16 +2,17 @@ const express = require('express');
 const { Pool } = require('pg');
 const router = express.Router();
 
-// Set up PostgreSQL connection pool
+// Set up PostgreSQL connection pool using environment variables
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,  // Use the DATABASE_URL environment variable
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,  // Enable SSL if DATABASE_SSL is true
+  connectionString: process.env.DATABASE_URL,  // e.g., from .env or Render's environment settings
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
-// Route to create a new booking
+// POST route to create a new booking
 router.post('/', (req, res) => {
   const { roomName, customerName, amount, bookingDate } = req.body;
 
+  // Validate required fields
   if (!roomName || !customerName || isNaN(amount) || !bookingDate) {
     return res.status(400).json({ error: 'All fields are required and amount must be a number.' });
   }
@@ -28,8 +29,9 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: `Room ${roomName} is already booked for ${bookingDate}. Please choose a different room or date.` });
     }
 
-    // Insert the new booking if no conflict
-    const insertQuery = `INSERT INTO room_bookings (room_name, customer_name, amount, booking_date) VALUES ($1, $2, $3, $4) RETURNING id`;
+    // Insert the new booking if no conflict is found
+    const insertQuery = `INSERT INTO room_bookings (room_name, customer_name, amount, booking_date)
+                         VALUES ($1, $2, $3, $4) RETURNING id`;
     pool.query(insertQuery, [roomName, customerName, amount, bookingDate], (err, result) => {
       if (err) {
         console.error('Error booking room:', err.message);
@@ -41,7 +43,7 @@ router.post('/', (req, res) => {
   });
 });
 
-// Route to get bookings for a specific date
+// GET route to retrieve bookings for a specific date
 router.get('/', (req, res) => {
   const { bookingDate } = req.query;
 
@@ -55,7 +57,6 @@ router.get('/', (req, res) => {
       console.error('Error fetching bookings:', err.message);
       return res.status(500).json({ error: 'Unable to fetch bookings. Please try again later.' });
     }
-
     res.json({ bookings: result.rows });
   });
 });
