@@ -1,7 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose(); // Import sqlite3
+const { Pool } = require('pg'); // Import pg for PostgreSQL
 
 // Import route modules
 const salariesRouter = require('./routes/salaries');
@@ -11,12 +12,17 @@ const roomBookingsRouter = require('./routes/roomBookings');
 
 const app = express();
 
-// SQLite database setup
-const db = new sqlite3.Database(process.env.DB_PATH, (err) => {
+// PostgreSQL connection setup using Pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+});
+
+pool.connect((err) => {
   if (err) {
-    console.error('Failed to connect to SQLite', err.message);
+    console.error('Failed to connect to PostgreSQL', err.stack);
   } else {
-    console.log('Connected to SQLite database');
+    console.log('Connected to PostgreSQL database');
   }
 });
 
@@ -59,3 +65,4 @@ const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
+
